@@ -1,0 +1,30 @@
+{
+  "name": "Xeye chrome plugin",
+  "version": "1.0",
+  "description": "Xeye chrome plugin",
+  "manifest_version": 2,
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "jquery-3.5.1.min.js",
+        "popper.min.js",
+        "tf.min.js",
+        "teachablemachine-image.min.js",
+        "content.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    "metadata.json",
+    "model.json",
+    "weights.bin"
+  ],
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_popup": "popup.html",
+    "default_title": "Xeye"
+  }
+}
