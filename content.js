@@ -7,6 +7,8 @@ let model, maxPredictions;
 
 // Load the image model and setup the webcam
 async function init() {
+    console.log("Xeye started");
+
     const modelURL = chrome.extension.getURL('/model.json');
     const metadataURL = chrome.extension.getURL('/metadata.json');
     // load the model and metadata
@@ -17,7 +19,6 @@ async function init() {
     maxPredictions = model.getTotalClasses();
 
     predictImg();
-
     const playId = setInterval(function () {
         predictImg();
     }, 1000);
