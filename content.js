@@ -1,4 +1,3 @@
-// UI js end
 // AI core start
 // More API functions here:
 // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
@@ -16,10 +15,16 @@ async function init() {
     // Note: the pose library adds "tmImage" object to your window (window.tmImage)
     model = await tmImage.load(modelURL, metadataURL);
     maxPredictions = model.getTotalClasses();
+
+    predictImg();
+
+    const playId = setInterval(function () {
+        predictImg();
+    }, 1000);
 }
 
 // run the webcam image through the image model
-async function predict(img) {
+async function predictPornImageByData(img) {
     // predict can take in an image, video or canvas html element
     const prediction = await model.predict(img, false);
     const pornImage = prediction[0];
@@ -30,51 +35,6 @@ async function predict(img) {
         return;
     }
 }
-
-function validURL(str) {
-    var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
-        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
-        '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
-        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
-        '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
-    return !!pattern.test(str);
-}
-
-$("body").change(function () {
-    console.log("body changed");
-});
-
-// Start
-init();
-
-let count = 0;
-const playId = setInterval(function () {
-    // console.log(++count);
-    let imgTagList = document.documentElement.getElementsByTagName("img");
-    for (let img of imgTagList) {
-        if (img.src === BLIND_IMAGE) {
-            continue;
-        }
-
-        if (img.dataset.isPredicted === "Y") {
-            continue;
-        }
-
-        if (img.src == null) {
-            continue;
-        }
-
-        if (validURL(img.src)) {
-            img.dataset.isPredicted = "Y";
-            predictPornImageByUrl(img);
-        } else if (img.src.startsWith("data:image")) {
-            img.dataset.isPredicted = "Y";
-            predict(img);
-        }
-
-    }
-}, 1000);
 
 // API call
 function predictPornImageByUrl(img) {
@@ -111,3 +71,42 @@ function predictPornImageByUrl(img) {
         }
     });
 }
+
+function validURL(str) {
+    var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
+        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
+        '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
+        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
+        '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
+        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+    return !!pattern.test(str);
+}
+
+function predictImg() {
+    let imgTagList = document.documentElement.getElementsByTagName("img");
+    for (let img of imgTagList) {
+        if (img.src === BLIND_IMAGE) {
+            continue;
+        }
+
+        if (img.dataset.isPredicted === "Y") {
+            continue;
+        }
+
+        if (img.src == null) {
+            continue;
+        }
+
+        if (validURL(img.src)) {
+            img.dataset.isPredicted = "Y";
+            predictPornImageByUrl(img);
+        } else if (img.src.startsWith("data:image")) {
+            img.dataset.isPredicted = "Y";
+            predictPornImageByData(img);
+        }
+
+    }
+}
+
+// Start
+init();
