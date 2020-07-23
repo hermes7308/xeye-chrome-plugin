@@ -3,6 +3,11 @@
   "version": "1.0",
   "description": "Xeye chrome plugin",
   "manifest_version": 2,
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
   "content_scripts": [
     {
       "matches": [
@@ -20,11 +25,16 @@
   "web_accessible_resources": [
     "metadata.json",
     "model.json",
-    "weights.bin"
+    "weights.bin",
+    "style.css"
   ],
   "browser_action": {
     "default_icon": "icon.png",
     "default_popup": "popup.html",
     "default_title": "Xeye"
-  }
+  },
+  "permissions": [
+    "cookies",
+    "tabs"
+  ]
 }

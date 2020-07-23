@@ -1,113 +1,115 @@
-// AI core start
-// More API functions here:
-// https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
-// the link to your model provided by Teachable Machine export panel
-const BLIND_IMAGE = "https://www.publicdomainpictures.net/pictures/280000/velka/not-found-image-15383864787lu.jpg";
-let model, maxPredictions;
+$(document).ready(function () {
+    const BLIND_IMAGE = "https://www.publicdomainpictures.net/pictures/280000/velka/not-found-image-15383864787lu.jpg";
+    // Start - ENTRIPOINT
+    initXeye();
 
-// Load the image model and setup the webcam
-async function init() {
-    console.log("Xeye started");
+    // AI core start
+    // More API functions here:
+    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
+    // the link to your model provided by Teachable Machine export panel
+    let model;
+    // Load the image model and setup the webcam
+    async function initXeye() {
+        console.log("Xeye started");
 
-    const modelURL = chrome.extension.getURL('/model.json');
-    const metadataURL = chrome.extension.getURL('/metadata.json');
-    // load the model and metadata
-    // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-    // or files from your local hard drive
-    // Note: the pose library adds "tmImage" object to your window (window.tmImage)
-    model = await tmImage.load(modelURL, metadataURL);
-    maxPredictions = model.getTotalClasses();
+        const modelURL = chrome.extension.getURL('/model.json');
+        const metadataURL = chrome.extension.getURL('/metadata.json');
+        // load the model and metadata
+        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+        // or files from your local hard drive
+        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
+        model = await tmImage.load(modelURL, metadataURL);
 
-    predictImg();
-    const playId = setInterval(function () {
-        predictImg();
-    }, 1000);
-}
-
-// run the webcam image through the image model
-async function predictPornImageByData(img) {
-    // predict can take in an image, video or canvas html element
-    const prediction = await model.predict(img, false);
-    const pornImage = prediction[0];
-    const normalImage = prediction[1];
-
-    if (pornImage.probability > normalImage.probability) {
-        img.src = BLIND_IMAGE;
-        return;
+        startXeye();
     }
-}
 
-// API call
-function predictPornImageByUrl(img) {
-    var data = JSON.stringify({
-        url: img.src
-    });
+    async function startXeye() {
+        let xeyeRunCount = 0;
 
-    $.ajax({
-        type: "POST",
-        dataType: 'json',
-        contentType: 'application/json',
-        url: "https://dev.pandous.com/xeye/predict/url",
-        data: data,
-        responseType: 'application/json',
-        xhrFields: {
-            withCredentials: false
-        },
-        headers: {
-            'Access-Control-Allow-Credentials': true,
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'application/json'
-        },
-        success: function (response, status, xhr) {
-            if (response.status !== "SUCCESS") {
-                return;
-            }
+        while (true) {
+            chrome.runtime.sendMessage({
+                name: "getXeyeStatus"
+            }, ({ status: status }) => {
+                if (status) {
+                    console.log("Xeye run count: " + ++xeyeRunCount);
 
-            var data = JSON.parse(response.data.replace(/'/g, "\""));
-            if (data.PORN_IMAGE > data.NORMAL_IMAGE) {
+                    let imgTagList = document.documentElement.getElementsByTagName("img");
+                    for (let img of imgTagList) {
+                        if (img.dataset.inspectionYn != null) {
+                            continue;
+                        }
+
+                        if (img.src == BLIND_IMAGE) {
+                            continue;
+                        }
+
+                        if (img.src.startsWith("data:image")) {
+                            predictPornImageByData(img);
+                            continue;
+                        } else {
+                            preditPornImgByUrl(img);
+                            continue;
+                        }
+                    }
+                }
+            });
+            await sleep(1000);
+        }
+    }
+
+    // run to convert image url to image data
+    // and run precitor porn image data.
+    async function preditPornImgByUrl(img) {
+        let url = img.dataset.src;
+        if (url == null) {
+            url = img.src;
+        }
+
+        fetch(url)
+            .then(r => r.blob())
+            .then(blob => {
+                var reader = new FileReader();
+                reader.onload = function () {
+                    img.dataset.src = reader.result;
+                    img.src = img.dataset.src;
+                    predictPornImageByData(img);
+                };
+                reader.readAsDataURL(blob);
+            });
+    }
+
+    // run to predict porn rate using image data
+    let dataFilterWorkingCount = 0;
+    async function predictPornImageByData(img) {
+        console.log("Data filter working count: " + ++dataFilterWorkingCount);
+
+        if (img.dataset.inspectCount == null) {
+            img.dataset.inspectCount = 1;
+        }
+
+        img.dataset.inspectCount++;
+        if (img.dataset.inspectCount > 10) {
+            img.dataset.inspectionYn = "Y";
+        }
+
+        try {
+            // predict can take in an image, video or canvas html element
+            const prediction = await model.predict(img, false);
+            const pornImage = prediction[0];
+            const normalImage = prediction[1];
+
+            if (pornImage.probability > normalImage.probability) {
                 img.src = BLIND_IMAGE;
+                img.dataset.src = BLIND_IMAGE;
+                img.dataset.inspectionYn = "Y";
                 return;
             }
+        } catch (error) {
+            // console.log(error);
         }
-    });
-}
-
-function validURL(str) {
-    var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
-        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
-        '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
-        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
-        '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
-    return !!pattern.test(str);
-}
-
-function predictImg() {
-    let imgTagList = document.documentElement.getElementsByTagName("img");
-    for (let img of imgTagList) {
-        if (img.src === BLIND_IMAGE) {
-            continue;
-        }
-
-        if (img.dataset.isPredicted === "Y") {
-            continue;
-        }
-
-        if (img.src == null) {
-            continue;
-        }
-
-        if (validURL(img.src)) {
-            img.dataset.isPredicted = "Y";
-            predictPornImageByUrl(img);
-        } else if (img.src.startsWith("data:image")) {
-            img.dataset.isPredicted = "Y";
-            predictPornImageByData(img);
-        }
-
     }
-}
 
-// Start
-init();
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+});
