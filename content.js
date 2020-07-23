@@ -20,6 +20,7 @@ $(document).ready(function () {
         // Note: the pose library adds "tmImage" object to your window (window.tmImage)
         model = await tmImage.load(modelURL, metadataURL);
 
+        // run xeye
         startXeye();
     }
 
@@ -35,7 +36,7 @@ $(document).ready(function () {
 
                     let imgTagList = document.documentElement.getElementsByTagName("img");
                     for (let img of imgTagList) {
-                        if (img.dataset.inspectionYn != null) {
+                        if (img.dataset.inspectionYn == "Y") {
                             continue;
                         }
 
@@ -43,18 +44,21 @@ $(document).ready(function () {
                             continue;
                         }
 
-                        if (img.src.startsWith("data:image")) {
-                            predictPornImageByData(img);
-                            continue;
-                        } else {
-                            preditPornImgByUrl(img);
-                            continue;
-                        }
+                        predict(img);
                     }
                 }
             });
             await sleep(1000);
         }
+    }
+
+    async function predict(img) {
+        if (img.src.startsWith("data:image")) {
+            predictPornImageByData(img);
+            return;
+        }
+
+        preditPornImgByUrl(img);
     }
 
     // run to convert image url to image data
@@ -99,6 +103,7 @@ $(document).ready(function () {
             const normalImage = prediction[1];
 
             if (pornImage.probability > normalImage.probability) {
+                img.dataset.orignalSrc = img.src;
                 img.src = BLIND_IMAGE;
                 img.dataset.src = BLIND_IMAGE;
                 img.dataset.inspectionYn = "Y";
